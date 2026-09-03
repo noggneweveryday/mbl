@@ -73,7 +73,7 @@
 
         .stats {
             display: grid;
-            grid-template-columns: repeat(6, 1fr);
+            grid-template-columns: repeat(5, 1fr);
             gap: 12px;
             margin-bottom: 16px;
         }
@@ -105,9 +105,6 @@
         }
         .stat-card .value.orange {
             color: #f5a623;
-        }
-        .stat-card .value.purple {
-            color: #8b5cf6;
         }
 
         .row-3col {
@@ -323,7 +320,6 @@
             <div class="stat-card"><div class="label">✅ 合格订单</div><div class="value green" id="passCount">-</div></div>
             <div class="stat-card"><div class="label">❌ 不合格订单</div><div class="value red" id="failCount">-</div></div>
             <div class="stat-card"><div class="label">📊 订单合格率</div><div class="value orange" id="passRate">-</div></div>
-            <div class="stat-card"><div class="label">📈 样品合格率</div><div class="value purple" id="sampleRate">-</div></div>
         </div>
 
         <!-- 第一行图表：3列 -->
@@ -437,7 +433,6 @@
             passCount: document.getElementById('passCount'),
             failCount: document.getElementById('failCount'),
             passRate: document.getElementById('passRate'),
-            sampleRate: document.getElementById('sampleRate'),
             detailBadge: document.getElementById('detailBadge'),
             detailTable: document.getElementById('detailTable'),
             searchInput: document.getElementById('searchInput'),
@@ -523,8 +518,7 @@
 
         function parse(records) {
             const map = {};
-            let totalSamples = 0,
-                passSamples = 0;
+            let totalSamples = 0;
             const feelStats = {},
                 appearanceStats = {},
                 sealStats = {},
@@ -635,7 +629,6 @@
                     });
 
                     totalSamples++;
-                    if (isPass) passSamples++;
 
                     // ---- 统计数据 ----
                     const feelKey = feel || '未知';
@@ -675,7 +668,7 @@
             const list = Object.values(map);
             list.sort((a, b) => b.date.localeCompare(a.date));
 
-            return { list, totalSamples, passSamples, feelStats, appearanceStats, sealStats, peelStats };
+            return { list, totalSamples, feelStats, appearanceStats, sealStats, peelStats };
         }
 
         // ================================================================
@@ -694,7 +687,7 @@
                 const records = await fetchAll();
                 if (records.length === 0) throw new Error('无数据');
 
-                const { list, totalSamples, passSamples, feelStats, appearanceStats, sealStats, peelStats } = parse(records);
+                const { list, totalSamples, feelStats, appearanceStats, sealStats, peelStats } = parse(records);
 
                 if (list.length === 0) throw new Error('解析后无有效数据');
 
@@ -704,14 +697,12 @@
                 const passOrders = list.filter(o => o.isPass).length;
                 const failOrders = list.filter(o => !o.isPass).length;
                 const orderRate = list.length > 0 ? ((passOrders / list.length) * 100).toFixed(1) : 0;
-                const sampleRate = totalSamples > 0 ? ((passSamples / totalSamples) * 100).toFixed(1) : 0;
 
                 el.orderCount.textContent = list.length;
                 el.totalCount.textContent = totalSamples;
                 el.passCount.textContent = passOrders;
                 el.failCount.textContent = failOrders;
                 el.passRate.textContent = orderRate + '%';
-                el.sampleRate.textContent = sampleRate + '%';
                 el.detailBadge.textContent = list.length;
 
                 renderCharts(list, feelStats, appearanceStats, sealStats, peelStats);
@@ -845,31 +836,25 @@
                 <th>规格</th>
                 <th>日期</th>
                 <th>样品数</th>
-                <th>✅合格</th>
-                <th>❌不合格</th>
-                <th>合格率</th>
                 <th>状态</th>
                 <th style="width:55px;">操作</th>
             </tr></thead><tbody>`;
 
             filtered.forEach(o => {
-                const rate = o.samples.length > 0 ? (o.passCount / o.samples.length * 100).toFixed(1) : 0;
                 const rowId = `row_${o.orderId.replace(/[^a-zA-Z0-9]/g,'_')}`;
                 const isExpanded = expandedRows.has(rowId);
+                const finalStatus = o.finalConclusion || '合格';
 
                 html += `<tr id="${rowId}">
                     <td><strong>${o.orderId}</strong></td>
                     <td>${o.spec}</td>
                     <td>${o.date}</td>
                     <td>${o.samples.length}</td>
-                    <td style="color:#22b573;font-weight:600;">${o.passCount}</td>
-                    <td style="color:${o.failCount > 0 ? '#f55753' : '#999'};font-weight:${o.failCount > 0 ? '700' : '400'}">${o.failCount}</td>
-                    <td style="font-weight:600;color:${parseFloat(rate) >= 100 ? '#22b573' : '#f55753'}">${rate}%</td>
-                    <td><span class="tag ${o.isPass ? 'pass' : 'fail'}">${o.isPass ? '✅ 合格' : '❌ 不合格'}</span></td>
+                    <td><span class="tag ${finalStatus === '合格' ? 'pass' : 'fail'}">${finalStatus === '合格' ? '✅ 合格' : '❌ 不合格'}</span></td>
                     <td><button onclick="toggleDetail('${rowId}')" style="padding:1px 10px;border:1px solid #ddd;border-radius:4px;background:#f5f5f5;cursor:pointer;font-size:12px;">${isExpanded ? '收起' : '展开'}</button></td>
                 </tr>
                 <tr id="${rowId}_detail" style="display:${isExpanded ? 'table-row' : 'none'};background:#fafbff;">
-                    <td colspan="9" style="padding:8px 12px;">
+                    <td colspan="6" style="padding:8px 12px;">
                         <div style="font-size:12px;color:#666;margin-bottom:4px;font-weight:600;">📋 样品明细（${o.samples.length} 个）</div>
                         <table style="font-size:12px;border:1px solid #eee;border-radius:4px;overflow:hidden;width:100%;">
                             <thead><tr style="background:#f0f2f5;">
