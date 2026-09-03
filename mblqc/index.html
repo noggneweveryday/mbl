@@ -72,7 +72,7 @@
         }
         .stats {
             display: grid;
-            grid-template-columns: repeat(5, 1fr);
+            grid-template-columns: repeat(4, 1fr);
             gap: 14px;
             margin-bottom: 20px;
         }
@@ -98,9 +98,6 @@
         }
         .stat-card .value.red {
             color: #f55753;
-        }
-        .stat-card .value.orange {
-            color: #f5a623;
         }
         .stat-card .value.blue {
             color: #4f6ef7;
@@ -145,12 +142,7 @@
         }
         .table-wrap {
             overflow-x: auto;
-            max-height: 400px;
-            overflow-y: auto;
-        }
-        .table-wrap-full {
-            overflow-x: auto;
-            max-height: 500px;
+            max-height: 450px;
             overflow-y: auto;
         }
         table {
@@ -183,14 +175,6 @@
             border-radius: 20px;
             font-size: 12px;
             font-weight: 600;
-        }
-        .tag.pass {
-            background: #e6f7ed;
-            color: #22b573;
-        }
-        .tag.fail {
-            background: #ffe8e8;
-            color: #f55753;
         }
         .tag.defect {
             background: #fff3e0;
@@ -254,15 +238,12 @@
         .search-box .clear-btn:hover {
             background: #eee;
         }
-        .highlight {
-            background: #fff3cd !important;
-        }
         @media (max-width: 1000px) {
             .row-2col {
                 grid-template-columns: 1fr;
             }
             .stats {
-                grid-template-columns: repeat(3, 1fr);
+                grid-template-columns: repeat(2, 1fr);
             }
         }
         @media (max-width: 600px) {
@@ -300,7 +281,6 @@
             <div class="stat-card"><div class="label">总订单数</div><div class="value blue" id="orderCount">-</div></div>
             <div class="stat-card"><div class="label">合格记录</div><div class="value green" id="passCount">-</div></div>
             <div class="stat-card"><div class="label">不合格记录</div><div class="value red" id="failCount">-</div></div>
-            <div class="stat-card"><div class="label">合格率</div><div class="value orange" id="passRate">-</div></div>
         </div>
 
         <div class="row-2col">
@@ -318,18 +298,6 @@
                 <div class="table-wrap" id="failTable">
                     <div class="empty-state">点击「刷新数据」加载</div>
                 </div>
-            </div>
-        </div>
-
-        <div class="card">
-            <div class="card-title">📊 各订单统计 <span class="badge">按订单</span><span class="sort-hint">↓ 最新在前</span></div>
-            <div class="search-box">
-                <input type="text" id="orderSearchInput" placeholder="搜索订单号..." />
-                <button class="clear-btn" id="orderClearBtn">清除</button>
-                <span class="search-hint" id="orderResultHint">共 0 个订单</span>
-            </div>
-            <div class="table-wrap-full" id="orderTable">
-                <div class="empty-state">点击「刷新数据」加载</div>
             </div>
         </div>
 
@@ -353,75 +321,89 @@
             orderCount: document.getElementById('orderCount'),
             pass: document.getElementById('passCount'),
             fail: document.getElementById('failCount'),
-            rate: document.getElementById('passRate'),
             failBadge: document.getElementById('failCountBadge'),
             chart: document.getElementById('chartDefect'),
             failTable: document.getElementById('failTable'),
-            orderTable: document.getElementById('orderTable'),
             failSearch: document.getElementById('failSearchInput'),
             failClear: document.getElementById('failClearBtn'),
             failHint: document.getElementById('failResultHint'),
-            orderSearch: document.getElementById('orderSearchInput'),
-            orderClear: document.getElementById('orderClearBtn'),
-            orderHint: document.getElementById('orderResultHint'),
             refreshBtn: document.getElementById('refreshBtn'),
             statusText: document.getElementById('statusText')
         };
 
         let cachedFailList = [];
-        let cachedOrderList = [];
         let isLoading = false;
 
         // ================================================================
-        // API 请求（照搬您同事的写法）
+        // 工具函数
+        // ================================================================
+
+        function getDateOnly(val) {
+            if (!val) return '';
+            const str = String(val).trim();
+            return str.split(' ')[0] || str;
+        }
+
+        // ================================================================
+        // API 请求（分页拉取全部数据）
         // ================================================================
 
         async function fetchAllRecords() {
-            const body = {
-                limit: 500,
-                skip: 0,
-                sort: {
-                    '_widget_1788051924801': 'desc'
-                }
-            };
+            let allData = [];
+            let skip = 0;
+            const limit = 200;
 
-            // 三种鉴权方式轮询
-            const attempts = [
-                { headers: { 'Content-Type': 'application/json', 'x-api-key': API_KEY } },
-                { headers: { 'Content-Type': 'application/json', 'api-key': API_KEY } },
-                { headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${API_KEY}` } }
-            ];
-
-            let lastError = null;
-
-            for (const attempt of attempts) {
-                try {
-                    const response = await fetch(API_URL, {
-                        method: 'POST',
-                        headers: attempt.headers,
-                        body: JSON.stringify(body)
-                    });
-
-                    if (!response.ok) {
-                        throw new Error(`HTTP ${response.status}`);
+            while (true) {
+                const body = {
+                    limit: limit,
+                    skip: skip,
+                    sort: {
+                        '_widget_1788051924801': 'desc'
                     }
+                };
 
-                    const result = await response.json();
-                    console.log('API 返回:', result);
+                let success = false;
+                let list = [];
 
-                    // 取 result.data
-                    const list = Array.isArray(result.data) ? result.data : [];
-                    if (!list.length) {
-                        throw new Error('接口返回为空');
-                    }
+                const attempts = [
+                    { headers: { 'Content-Type': 'application/json', 'x-api-key': API_KEY } },
+                    { headers: { 'Content-Type': 'application/json', 'api-key': API_KEY } },
+                    { headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${API_KEY}` } }
+                ];
 
-                    return list;
-                } catch (error) {
-                    lastError = error.message;
+                for (const attempt of attempts) {
+                    try {
+                        const response = await fetch(API_URL, {
+                            method: 'POST',
+                            headers: attempt.headers,
+                            body: JSON.stringify(body)
+                        });
+
+                        if (!response.ok) {
+                            throw new Error(`HTTP ${response.status}`);
+                        }
+
+                        const result = await response.json();
+                        list = Array.isArray(result.data) ? result.data : [];
+                        success = true;
+                        break;
+                    } catch (error) {}
                 }
+
+                if (!success) {
+                    throw new Error('请求失败，请检查API地址和Key');
+                }
+
+                if (list.length === 0) break;
+
+                allData = allData.concat(list);
+                skip += limit;
+
+                if (list.length < limit) break;
+                if (allData.length > 10000) break;
             }
 
-            throw new Error(lastError || '请求失败');
+            return allData;
         }
 
         // ================================================================
@@ -433,9 +415,8 @@
 
             records.forEach(order => {
                 const orderId = String(order['_widget_1788051924729'] || '').trim();
-                const orderDate = String(order['_widget_1788051924801'] || '').trim();
+                const orderDate = getDateOnly(order['_widget_1788051924801']);
 
-                // 子表单（检验明细）
                 const subRows = order['_widget_1788051924873'] || [];
                 if (!Array.isArray(subRows)) return;
 
@@ -445,7 +426,6 @@
 
                     const conclusion = String(row['_widget_1788052463629'] || '').trim().toUpperCase();
 
-                    // 缺陷字段映射
                     const defectMap = {
                         '断附线': '_widget_1788051925835',
                         '≥0.5的未剪线头': '_widget_1788051926513',
@@ -506,15 +486,20 @@
 
             try {
                 const records = await fetchAllRecords();
-                console.log('API返回记录数:', records.length);
 
-                const parsed = analyzeRecords(records);
-                console.log('解析后明细数:', parsed.length);
-
-                if (parsed.length === 0) {
+                if (records.length === 0) {
                     el.statusText.textContent = '● 无数据';
                     el.statusText.className = 'status offline';
                     el.failTable.innerHTML = '<div class="empty-state">⚠️ 无数据</div>';
+                    return;
+                }
+
+                const parsed = analyzeRecords(records);
+
+                if (parsed.length === 0) {
+                    el.statusText.textContent = '● 解析后无有效数据';
+                    el.statusText.className = 'status offline';
+                    el.failTable.innerHTML = '<div class="empty-state">⚠️ 解析后无有效数据</div>';
                     return;
                 }
 
@@ -522,7 +507,6 @@
                 const failList = valid.filter(r => r.isFail);
                 const passList = valid.filter(r => !r.isFail);
 
-                // 按订单分组
                 const orderMap = {};
                 valid.forEach(item => {
                     const key = item.order;
@@ -533,26 +517,21 @@
                     if (item.isFail) orderMap[key].fail++;
                 });
                 const orderList = Object.values(orderMap);
-                orderList.sort((a, b) => b.date.localeCompare(a.date));
 
                 cachedFailList = failList;
-                cachedOrderList = orderList;
 
                 const total = valid.length;
                 const passCount = passList.length;
                 const failCount = failList.length;
-                const rate = total > 0 ? ((passCount / total) * 100).toFixed(1) : 0;
 
                 el.total.textContent = total;
                 el.orderCount.textContent = orderList.length;
                 el.pass.textContent = passCount;
                 el.fail.textContent = failCount;
-                el.rate.textContent = rate + '%';
                 el.failBadge.textContent = failCount;
 
                 renderChart(failList);
                 renderFailTable(failList, '');
-                renderOrderTable(orderList, '');
 
                 el.statusText.textContent = `● 已加载 ${total} 条记录`;
                 el.statusText.className = 'status online';
@@ -562,7 +541,6 @@
                 el.statusText.textContent = '● ' + error.message;
                 el.statusText.className = 'status offline';
                 el.failTable.innerHTML = `<div class="empty-state">❌ ${error.message}</div>`;
-                el.orderTable.innerHTML = `<div class="empty-state">❌ ${error.message}</div>`;
             } finally {
                 isLoading = false;
                 el.refreshBtn.disabled = false;
@@ -648,36 +626,6 @@
             el.failTable.innerHTML = html;
         }
 
-        function renderOrderTable(orderList, keyword) {
-            if (orderList.length === 0) {
-                el.orderTable.innerHTML = '<div class="empty-state">暂无数据</div>';
-                el.orderHint.textContent = '共 0 个订单';
-                return;
-            }
-
-            const kw = keyword.trim().toLowerCase();
-            let filtered = orderList;
-            if (kw) {
-                filtered = orderList.filter(item => item.order.toLowerCase().includes(kw));
-            }
-            el.orderHint.textContent = `共 ${filtered.length} 个订单`;
-
-            if (filtered.length === 0) {
-                el.orderTable.innerHTML = `<div class="empty-state">🔍 未找到匹配 "${keyword}" 的订单</div>`;
-                return;
-            }
-
-            let html =
-                `<table><thead><tr><th>订单号</th><th>日期 ↓</th><th>总人数</th><th>不合格人数</th><th>合格率</th><th>状态</th></tr></thead><tbody>`;
-            filtered.forEach(item => {
-                const rate = item.total > 0 ? ((item.total - item.fail) / item.total * 100).toFixed(1) : 0;
-                const status = item.fail === 0 ? '✅ 全部合格' : `⚠️ ${item.fail}人不合格`;
-                html += `<tr><td><strong>${item.order}</strong></td><td>${item.date}</td><td>${item.total}</td><td style="color:${item.fail > 0 ? '#f55753' : '#22b573'}">${item.fail}</td><td>${rate}%</td><td>${status}</td></tr>`;
-            });
-            html += `</tbody></table>`;
-            el.orderTable.innerHTML = html;
-        }
-
         // ================================================================
         // 搜索事件
         // ================================================================
@@ -685,9 +633,6 @@
         el.failSearch.addEventListener('input', () => renderFailTable(cachedFailList, el.failSearch.value));
         el.failClear.addEventListener('click', () => { el.failSearch.value = '';
             renderFailTable(cachedFailList, ''); });
-        el.orderSearch.addEventListener('input', () => renderOrderTable(cachedOrderList, el.orderSearch.value));
-        el.orderClear.addEventListener('click', () => { el.orderSearch.value = '';
-            renderOrderTable(cachedOrderList, ''); });
         el.refreshBtn.addEventListener('click', loadData);
 
         // ================================================================
