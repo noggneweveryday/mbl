@@ -1,0 +1,972 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>消毒包装质检分析</title>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js">
+    </script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+            background: #f0f2f5;
+            padding: 16px;
+            min-height: 100vh;
+        }
+        .screen {
+            max-width: 1500px;
+            margin: 0 auto;
+        }
+
+        .topbar {
+            background: #fff;
+            border-radius: 12px;
+            padding: 16px 24px;
+            margin-bottom: 16px;
+            box-shadow: 0 1px 6px rgba(0, 0, 0, 0.06);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .topbar h1 {
+            font-size: 20px;
+            color: #1a1a2e;
+        }
+        .topbar .sub {
+            color: #999;
+            font-size: 13px;
+        }
+        .topbar .status {
+            font-size: 13px;
+            color: #999;
+        }
+        .topbar .status.online {
+            color: #22b573;
+        }
+        .topbar .status.offline {
+            color: #f55753;
+        }
+        .topbar .refresh-btn {
+            padding: 6px 20px;
+            background: #4f6ef7;
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        .topbar .refresh-btn:hover {
+            background: #3a56d4;
+        }
+        .topbar .refresh-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        .stat-card {
+            background: #fff;
+            border-radius: 10px;
+            padding: 12px 16px;
+            box-shadow: 0 1px 6px rgba(0, 0, 0, 0.06);
+            text-align: center;
+        }
+        .stat-card .label {
+            font-size: 12px;
+            color: #999;
+        }
+        .stat-card .value {
+            font-size: 26px;
+            font-weight: 700;
+            color: #1a1a2e;
+            margin-top: 2px;
+        }
+        .stat-card .value.green {
+            color: #22b573;
+        }
+        .stat-card .value.red {
+            color: #f55753;
+        }
+        .stat-card .value.blue {
+            color: #4f6ef7;
+        }
+        .stat-card .value.orange {
+            color: #f5a623;
+        }
+        .stat-card .value.purple {
+            color: #8b5cf6;
+        }
+
+        .row-3col {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+        .row-2col {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+
+        .card {
+            background: #fff;
+            border-radius: 10px;
+            padding: 16px 18px;
+            box-shadow: 0 1px 6px rgba(0, 0, 0, 0.06);
+        }
+        .card .card-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #1a1a2e;
+            margin-bottom: 10px;
+        }
+        .card .card-title .badge {
+            background: #4f6ef7;
+            color: #fff;
+            font-size: 11px;
+            border-radius: 20px;
+            padding: 0 10px;
+            font-weight: 400;
+            margin-left: 6px;
+        }
+        .card .card-title .tip {
+            font-size: 11px;
+            font-weight: 400;
+            color: #999;
+            margin-left: 6px;
+        }
+        .chart-box {
+            width: 100%;
+            height: 210px;
+        }
+
+        .table-wrap {
+            overflow-x: auto;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+        table th {
+            background: #f7f8fc;
+            padding: 6px 10px;
+            text-align: left;
+            border-bottom: 2px solid #e8e8e8;
+            white-space: nowrap;
+            font-weight: 600;
+            color: #555;
+            position: sticky;
+            top: 0;
+            z-index: 2;
+        }
+        table td {
+            padding: 5px 10px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        table tr:hover td {
+            background: #fafbff;
+        }
+
+        .tag {
+            display: inline-block;
+            padding: 1px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .tag.pass {
+            background: #e6f7ed;
+            color: #22b573;
+        }
+        .tag.fail {
+            background: #ffe8e8;
+            color: #f55753;
+        }
+
+        .empty-state {
+            text-align: center;
+            color: #bbb;
+            padding: 30px 0;
+            font-size: 14px;
+        }
+        .footer {
+            text-align: center;
+            color: #ccc;
+            font-size: 12px;
+            margin-top: 16px;
+            padding-top: 12px;
+            border-top: 1px solid #eee;
+        }
+
+        .search-box {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .search-box input {
+            padding: 5px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 13px;
+            flex: 1;
+            min-width: 140px;
+            outline: none;
+        }
+        .search-box input:focus {
+            border-color: #4f6ef7;
+        }
+        .search-box .search-hint {
+            color: #999;
+            font-size: 12px;
+        }
+        .search-box .clear-btn {
+            padding: 4px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            background: #f5f5f5;
+            cursor: pointer;
+            font-size: 12px;
+            color: #666;
+        }
+        .search-box .clear-btn:hover {
+            background: #eee;
+        }
+        .search-box .expand-btn {
+            padding: 4px 12px;
+            border: 1px solid #4f6ef7;
+            border-radius: 6px;
+            background: #eef2ff;
+            cursor: pointer;
+            font-size: 12px;
+            color: #4f6ef7;
+        }
+        .search-box .expand-btn:hover {
+            background: #dde3ff;
+        }
+        .search-box .collapse-btn {
+            padding: 4px 12px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            background: #f5f5f5;
+            cursor: pointer;
+            font-size: 12px;
+            color: #999;
+        }
+        .search-box .collapse-btn:hover {
+            background: #eee;
+        }
+
+        @media (max-width: 1200px) {
+            .row-3col {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+        @media (max-width: 900px) {
+            .row-3col,
+            .row-2col {
+                grid-template-columns: 1fr;
+            }
+            .stats {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+        @media (max-width: 600px) {
+            .stats {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .topbar {
+                flex-direction: column;
+                align-items: stretch;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="screen">
+
+        <header class="topbar">
+            <div>
+                <h1>🧪 消毒包装质检分析</h1>
+                <span class="sub">API 实时数据</span>
+            </div>
+            <div>
+                <span class="status" id="statusText">● 就绪</span>
+                <button class="refresh-btn" id="refreshBtn">🔄 刷新</button>
+            </div>
+        </header>
+
+        <!-- 统计卡片 -->
+        <div class="stats">
+            <div class="stat-card"><div class="label">📦 订单总数</div><div class="value blue" id="orderCount">-</div></div>
+            <div class="stat-card"><div class="label">📋 样品总数</div><div class="value" id="totalCount">-</div></div>
+            <div class="stat-card"><div class="label">✅ 合格订单</div><div class="value green" id="passCount">-</div></div>
+            <div class="stat-card"><div class="label">❌ 不合格订单</div><div class="value red" id="failCount">-</div></div>
+            <div class="stat-card"><div class="label">📊 订单合格率</div><div class="value orange" id="passRate">-</div></div>
+            <div class="stat-card"><div class="label">📈 样品合格率</div><div class="value purple" id="sampleRate">-</div></div>
+        </div>
+
+        <!-- 第一行图表：3列 -->
+        <div class="row-3col">
+            <div class="card">
+                <div class="card-title">📊 订单合格/不合格 <span class="badge">整体</span></div>
+                <div class="chart-box" id="chartOrderResult"></div>
+            </div>
+            <div class="card">
+                <div class="card-title">👆 手感检测分布 <span class="badge">撕裂法</span></div>
+                <div class="chart-box" id="chartFeel"></div>
+            </div>
+            <div class="card">
+                <div class="card-title">🔍 外观检测结果 <span class="badge">合格/不合格</span></div>
+                <div class="chart-box" id="chartAppearance"></div>
+            </div>
+        </div>
+
+        <!-- 第二行图表：2列 -->
+        <div class="row-2col">
+            <div class="card">
+                <div class="card-title">💧 密封性（渗漏） <span class="badge">有/无</span></div>
+                <div class="chart-box" id="chartSeal"></div>
+            </div>
+            <div class="card">
+                <div class="card-title">📏 剥离力测试结论 <span class="badge">合格/不合格</span></div>
+                <div class="chart-box" id="chartPeel"></div>
+            </div>
+        </div>
+
+        <!-- 订单明细 -->
+        <div class="card">
+            <div class="card-title">
+                📋 订单明细
+                <span class="badge">共 <span id="detailBadge">0</span> 个订单</span>
+                <span class="tip">点击「展开」查看每个样品的详细数据</span>
+            </div>
+            <div class="search-box">
+                <input type="text" id="searchInput" placeholder="搜索订单号..." />
+                <button class="clear-btn" id="clearBtn">清除</button>
+                <button class="expand-btn" id="expandAllBtn">📂 展开全部</button>
+                <button class="collapse-btn" id="collapseAllBtn">📁 收起全部</button>
+                <span class="search-hint" id="resultHint">共 0 个订单</span>
+            </div>
+            <div class="table-wrap" id="detailTable">
+                <div class="empty-state">点击「刷新」加载数据</div>
+            </div>
+        </div>
+
+        <div class="footer">数据通过 API 实时获取</div>
+    </div>
+
+    <script>
+        // ================================================================
+        // 配置 - 消毒包装 API
+        // ================================================================
+
+        const API_KEY = '37x5cCwMcDtqmnuuKQe2Xfakg7Ez5GcM';
+        const API_URL = 'https://shurui.online-office.net/openapi/v1/app/564ba6f1503200052f825d8c/entry/5ed7b328f101c19bc0f9a0ed/data';
+
+        // ---- 主表字段 ----
+        const DATE_FIELD = '_widget_1788054999239';
+        const ORDER_FIELD = '_widget_1788054999263';
+        const SPEC_FIELD = '_widget_1788054999280';
+        const BAG_SIZE_FIELD = '_widget_1788054999297';
+        const BAG_CONTENT_FIELD = '_widget_1788054999314';
+        const BAG_TYPE_FIELD = '_widget_1788055032428';
+        const SAMPLE_SOURCE_FIELD = '_widget_1788054999348';
+        const FINAL_CONCLUSION_FIELD = '_widget_1788055032628';
+
+        // ---- 子表单1: 撕裂法（手感检测） ----
+        const TEAR_SUB = '_widget_1788055032496';
+        const TEAR_SAMPLE_ID = '_widget_1788055033233';
+        const FEEL_FIELD = '_widget_1788055033236';
+        const TEAR_FIELD = '_widget_1788055033242';
+        const PAPER_POS_FIELD = '_widget_1788055033251';
+        const APPEARANCE_FIELD = '_widget_1788055033262';
+
+        // ---- 子表单2: 压模宽度及密封性测试 ----
+        const SEAL_SUB = '_widget_1788055032519';
+        const SEAL_SAMPLE_ID = '_widget_1788055549663';
+        const BAG_SIZE_DETAIL = '_widget_1788055549666';
+        const HANDLE_SIZE = '_widget_1788055549671';
+        const WIDTH_A = '_widget_1788055549678';
+        const WIDTH_B = '_widget_1788055549687';
+        const WIDTH_C = '_widget_1788055549698';
+        const WIDTH_D = '_widget_1788055549711';
+        const WIDTH_E = '_widget_1788055549726';
+        const SEAL_LEAK_FIELD = '_widget_1788055549743';
+        const SEAL_POS_FIELD = '_widget_1788055549763';
+
+        // ---- 子表单3: 剥离力测试 ----
+        const PEEL_SUB = '_widget_1788055032542';
+        const PEEL_SAMPLE_ID = '_widget_1788055548461';
+        const PEEL_A = '_widget_1788055548464';
+        const PEEL_B = '_widget_1788055548469';
+        const PEEL_C = '_widget_1788055548476';
+        const PEEL_D = '_widget_1788055548485';
+        const PEEL_E = '_widget_1788055548496';
+        const PEEL_CONCLUSION = '_widget_1788055549016';
+
+        // ================================================================
+        // DOM
+        // ================================================================
+
+        const el = {
+            statusText: document.getElementById('statusText'),
+            refreshBtn: document.getElementById('refreshBtn'),
+            orderCount: document.getElementById('orderCount'),
+            totalCount: document.getElementById('totalCount'),
+            passCount: document.getElementById('passCount'),
+            failCount: document.getElementById('failCount'),
+            passRate: document.getElementById('passRate'),
+            sampleRate: document.getElementById('sampleRate'),
+            detailBadge: document.getElementById('detailBadge'),
+            detailTable: document.getElementById('detailTable'),
+            searchInput: document.getElementById('searchInput'),
+            clearBtn: document.getElementById('clearBtn'),
+            expandAllBtn: document.getElementById('expandAllBtn'),
+            collapseAllBtn: document.getElementById('collapseAllBtn'),
+            resultHint: document.getElementById('resultHint'),
+            chartOrderResult: document.getElementById('chartOrderResult'),
+            chartFeel: document.getElementById('chartFeel'),
+            chartAppearance: document.getElementById('chartAppearance'),
+            chartSeal: document.getElementById('chartSeal'),
+            chartPeel: document.getElementById('chartPeel')
+        };
+
+        let cachedData = [];
+        let isLoading = false;
+        let expandedRows = new Set();
+
+        // ================================================================
+        // 工具
+        // ================================================================
+
+        function getStr(val) {
+            if (val === undefined || val === null) return '';
+            if (typeof val === 'object') {
+                if (val.name !== undefined && val.name !== null) return String(val.name).trim();
+                if (val.label !== undefined && val.label !== null) return String(val.label).trim();
+                return '';
+            }
+            return String(val).trim();
+        }
+
+        function getDate(val) {
+            const s = getStr(val);
+            return s.split(' ')[0] || s;
+        }
+
+        // ================================================================
+        // API 请求（分页拉取全部数据）
+        // ================================================================
+
+        async function fetchAll() {
+            let all = [],
+                skip = 0,
+                limit = 200;
+
+            while (true) {
+                const body = { limit, skip, sort: { [DATE_FIELD]: 'desc' } };
+                let list = [],
+                    ok = false;
+
+                const attempts = [
+                    { headers: { 'Content-Type': 'application/json', 'x-api-key': API_KEY } },
+                    { headers: { 'Content-Type': 'application/json', 'api-key': API_KEY } },
+                    { headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${API_KEY}` } }
+                ];
+
+                for (const a of attempts) {
+                    try {
+                        const r = await fetch(API_URL, { method: 'POST', headers: a.headers, body: JSON.stringify(body) });
+                        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+                        const d = await r.json();
+                        list = Array.isArray(d.data) ? d.data : [];
+                        ok = true;
+                        break;
+                    } catch (e) {}
+                }
+
+                if (!ok) throw new Error('请求失败');
+
+                if (list.length === 0) break;
+                all = all.concat(list);
+                skip += limit;
+                if (list.length < limit || all.length > 10000) break;
+            }
+
+            return all;
+        }
+
+        // ================================================================
+        // 解析数据 - 正确映射消毒包装的3个子表单
+        // ================================================================
+
+        function parse(records) {
+            const map = {};
+            let totalSamples = 0,
+                passSamples = 0;
+            const feelStats = {},
+                appearanceStats = {},
+                sealStats = {},
+                peelStats = {};
+
+            records.forEach(order => {
+                const orderId = getStr(order[ORDER_FIELD]);
+                if (!orderId) return;
+
+                const date = getDate(order[DATE_FIELD]);
+                const spec = getStr(order[SPEC_FIELD]);
+                const bagSize = getStr(order[BAG_SIZE_FIELD]);
+                const bagContent = getStr(order[BAG_CONTENT_FIELD]);
+                const bagType = getStr(order[BAG_TYPE_FIELD]);
+                const sampleSource = getStr(order[SAMPLE_SOURCE_FIELD]);
+                const finalConclusion = getStr(order[FINAL_CONCLUSION_FIELD]);
+
+                // ---- 解析撕裂法子表单 ----
+                const tearSub = order[TEAR_SUB] || [];
+                const tearRows = Array.isArray(tearSub) ? tearSub : [];
+
+                // ---- 解析密封性子表单 ----
+                const sealSub = order[SEAL_SUB] || [];
+                const sealRows = Array.isArray(sealSub) ? sealSub : [];
+
+                // ---- 解析剥离力子表单 ----
+                const peelSub = order[PEEL_SUB] || [];
+                const peelRows = Array.isArray(peelSub) ? peelSub : [];
+
+                // 按样品编号关联三个子表单的数据
+                const samples = [];
+
+                // 取最长的子表单作为主循环
+                const maxLen = Math.max(tearRows.length, sealRows.length, peelRows.length);
+
+                for (let i = 0; i < maxLen; i++) {
+                    const tearRow = tearRows[i] || {};
+                    const sealRow = sealRows[i] || {};
+                    const peelRow = peelRows[i] || {};
+
+                    // 样品编号优先取撕裂法的，如果没有则取密封性的
+                    let sampleId = getStr(tearRow[TEAR_SAMPLE_ID]);
+                    if (!sampleId) sampleId = getStr(sealRow[SEAL_SAMPLE_ID]);
+                    if (!sampleId) sampleId = getStr(peelRow[PEEL_SAMPLE_ID]);
+                    if (!sampleId) continue;
+
+                    // ---- 撕裂法数据 ----
+                    const feel = getStr(tearRow[FEEL_FIELD]) || '滑爽，力度适中';
+                    const tear = getStr(tearRow[TEAR_FIELD]) || '否';
+                    const paperPos = getStr(tearRow[PAPER_POS_FIELD]) || '/';
+                    const appearance = getStr(tearRow[APPEARANCE_FIELD]) || '合格';
+
+                    // ---- 密封性数据 ----
+                    const sealLeak = getStr(sealRow[SEAL_LEAK_FIELD]) || '无渗漏';
+                    const sealPos = getStr(sealRow[SEAL_POS_FIELD]) || '';
+                    const bagSizeDetail = getStr(sealRow[BAG_SIZE_DETAIL]) || '';
+                    const handleSize = getStr(sealRow[HANDLE_SIZE]) || '';
+                    const wA = getStr(sealRow[WIDTH_A]) || '';
+                    const wB = getStr(sealRow[WIDTH_B]) || '';
+                    const wC = getStr(sealRow[WIDTH_C]) || '';
+                    const wD = getStr(sealRow[WIDTH_D]) || '';
+                    const wE = getStr(sealRow[WIDTH_E]) || '';
+
+                    // ---- 剥离力数据 ----
+                    const peelA = getStr(peelRow[PEEL_A]) || '';
+                    const peelB = getStr(peelRow[PEEL_B]) || '';
+                    const peelC = getStr(peelRow[PEEL_C]) || '';
+                    const peelD = getStr(peelRow[PEEL_D]) || '';
+                    const peelE = getStr(peelRow[PEEL_E]) || '';
+                    const peelConclusion = getStr(peelRow[PEEL_CONCLUSION]) || '合格';
+
+                    // ---- 判断样品是否合格 ----
+                    const isAppearancePass = appearance === '合格' || appearance === '';
+                    const isSealPass = sealLeak === '无渗漏' || sealLeak === '无';
+                    const isPeelPass = peelConclusion === '合格' || peelConclusion === '';
+                    const finalIsPass = finalConclusion === '合格' || finalConclusion === '';
+
+                    // 综合判断：外观合格 + 密封无渗漏 + 剥离力合格 + 最终结论合格
+                    const isPass = isAppearancePass && isSealPass && isPeelPass && finalIsPass;
+
+                    samples.push({
+                        sampleId,
+                        feel,
+                        tear,
+                        paperPos,
+                        appearance,
+                        sealLeak,
+                        sealPos,
+                        bagSizeDetail,
+                        handleSize,
+                        wA,
+                        wB,
+                        wC,
+                        wD,
+                        wE,
+                        peelA,
+                        peelB,
+                        peelC,
+                        peelD,
+                        peelE,
+                        peelConclusion,
+                        finalConclusion,
+                        isPass,
+                        isAppearancePass,
+                        isSealPass,
+                        isPeelPass,
+                        isFinalPass: finalIsPass
+                    });
+
+                    totalSamples++;
+                    if (isPass) passSamples++;
+
+                    // ---- 统计数据 ----
+                    const feelKey = feel || '未知';
+                    feelStats[feelKey] = (feelStats[feelKey] || 0) + 1;
+
+                    const appKey = appearance || '未知';
+                    appearanceStats[appKey] = (appearanceStats[appKey] || 0) + 1;
+
+                    const sealKey = sealLeak || '无渗漏';
+                    sealStats[sealKey] = (sealStats[sealKey] || 0) + 1;
+
+                    const peelKey = peelConclusion || '合格';
+                    peelStats[peelKey] = (peelStats[peelKey] || 0) + 1;
+                }
+
+                if (samples.length === 0) return;
+
+                const pass = samples.filter(s => s.isPass).length;
+                const fail = samples.length - pass;
+
+                map[orderId] = {
+                    orderId,
+                    date,
+                    spec,
+                    bagSize,
+                    bagContent,
+                    bagType,
+                    sampleSource,
+                    finalConclusion,
+                    samples,
+                    passCount: pass,
+                    failCount: fail,
+                    isPass: fail === 0
+                };
+            });
+
+            const list = Object.values(map);
+            list.sort((a, b) => b.date.localeCompare(a.date));
+
+            return { list, totalSamples, passSamples, feelStats, appearanceStats, sealStats, peelStats };
+        }
+
+        // ================================================================
+        // 加载数据
+        // ================================================================
+
+        async function loadData() {
+            if (isLoading) return;
+            isLoading = true;
+            el.refreshBtn.disabled = true;
+            el.refreshBtn.textContent = '⏳...';
+            el.statusText.textContent = '● 加载中...';
+            el.statusText.className = 'status';
+
+            try {
+                const records = await fetchAll();
+                if (records.length === 0) throw new Error('无数据');
+
+                const { list, totalSamples, passSamples, feelStats, appearanceStats, sealStats, peelStats } = parse(records);
+
+                if (list.length === 0) throw new Error('解析后无有效数据');
+
+                cachedData = list;
+                expandedRows = new Set();
+
+                const passOrders = list.filter(o => o.isPass).length;
+                const failOrders = list.filter(o => !o.isPass).length;
+                const orderRate = list.length > 0 ? ((passOrders / list.length) * 100).toFixed(1) : 0;
+                const sampleRate = totalSamples > 0 ? ((passSamples / totalSamples) * 100).toFixed(1) : 0;
+
+                el.orderCount.textContent = list.length;
+                el.totalCount.textContent = totalSamples;
+                el.passCount.textContent = passOrders;
+                el.failCount.textContent = failOrders;
+                el.passRate.textContent = orderRate + '%';
+                el.sampleRate.textContent = sampleRate + '%';
+                el.detailBadge.textContent = list.length;
+
+                renderCharts(list, feelStats, appearanceStats, sealStats, peelStats);
+                renderTable(list, '');
+
+                el.statusText.textContent = `● ${list.length} 个订单，${totalSamples} 个样品`;
+                el.statusText.className = 'status online';
+
+            } catch (e) {
+                console.error(e);
+                el.statusText.textContent = '● ' + e.message;
+                el.statusText.className = 'status offline';
+                el.detailTable.innerHTML = `<div class="empty-state">❌ ${e.message}</div>`;
+            } finally {
+                isLoading = false;
+                el.refreshBtn.disabled = false;
+                el.refreshBtn.textContent = '🔄 刷新';
+            }
+        }
+
+        // ================================================================
+        // 图表
+        // ================================================================
+
+        function renderCharts(list, feelStats, appearanceStats, sealStats, peelStats) {
+            // 1. 订单合格/不合格 饼图
+            const pass = list.filter(o => o.isPass).length;
+            const fail = list.filter(o => !o.isPass).length;
+            const c1 = echarts.init(el.chartOrderResult);
+            c1.setOption({
+                tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
+                legend: { orient: 'vertical', right: '5%', top: 'center' },
+                series: [{
+                    type: 'pie',
+                    radius: ['45%', '70%'],
+                    label: { show: true, formatter: '{d}%', fontSize: 13, fontWeight: 600 },
+                    data: [
+                        { name: '✅ 合格订单', value: pass, itemStyle: { color: '#22b573' } },
+                        { name: '❌ 不合格订单', value: fail, itemStyle: { color: '#f55753' } }
+                    ]
+                }]
+            });
+            c1.resize();
+
+            // 2. 手感分布
+            renderBar(el.chartFeel, feelStats, '#4f6ef7', '样品数');
+
+            // 3. 外观检测
+            renderBar(el.chartAppearance, appearanceStats, '#8b5cf6', '样品数');
+
+            // 4. 密封性
+            renderBar(el.chartSeal, sealStats, '#f5a623', '样品数');
+
+            // 5. 剥离力结论
+            renderBar(el.chartPeel, peelStats, '#22b573', '样品数');
+
+            window.addEventListener('resize', () => {
+                c1.resize();
+                [el.chartFeel, el.chartAppearance, el.chartSeal, el.chartPeel].forEach(id => {
+                    const inst = echarts.getInstanceByDom(id);
+                    if (inst) inst.resize();
+                });
+            });
+        }
+
+        function renderBar(dom, stats, color, yName) {
+            const chart = echarts.init(dom);
+            const sorted = Object.entries(stats || {}).sort((a, b) => b[1] - a[1]);
+            const names = sorted.map(d => d[0]);
+            const values = sorted.map(d => d[1]);
+
+            if (names.length === 0) {
+                chart.setOption({
+                    title: { text: '暂无数据', left: 'center', top: 'center', textStyle: { color: '#ccc', fontSize: 13,
+                            fontWeight: 400 } },
+                    xAxis: { show: false },
+                    yAxis: { show: false },
+                    series: [{ type: 'bar', data: [] }]
+                });
+                return;
+            }
+
+            const needRotate = names.length > 5;
+            chart.setOption({
+                tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+                grid: { left: '10%', right: '6%', top: '8%', bottom: needRotate ? '28%' : '12%' },
+                xAxis: {
+                    type: 'category',
+                    data: names,
+                    axisLabel: { fontSize: 11, interval: 0, rotate: needRotate ? 20 : 0 }
+                },
+                yAxis: { type: 'value', name: yName, minInterval: 1, splitLine: { lineStyle: { color: '#f0f0f0',
+                            type: 'dashed' } } },
+                series: [{
+                    type: 'bar',
+                    data: values,
+                    barWidth: '40%',
+                    itemStyle: { color, borderRadius: [3, 3, 0, 0] },
+                    label: { show: true, position: 'top', fontSize: 12, fontWeight: 600 }
+                }]
+            });
+            chart.resize();
+        }
+
+        // ================================================================
+        // 表格
+        // ================================================================
+
+        function renderTable(list, keyword) {
+            if (list.length === 0) {
+                el.detailTable.innerHTML = '<div class="empty-state">暂无数据</div>';
+                el.resultHint.textContent = '共 0 个订单';
+                return;
+            }
+
+            const kw = keyword.trim().toLowerCase();
+            let filtered = list;
+            if (kw) {
+                filtered = list.filter(o => o.orderId.toLowerCase().includes(kw));
+            }
+
+            el.resultHint.textContent = `共 ${filtered.length} 个订单`;
+
+            if (filtered.length === 0) {
+                el.detailTable.innerHTML = `<div class="empty-state">🔍 未找到 "${keyword}"</div>`;
+                return;
+            }
+
+            let html = `<table><thead><tr>
+                <th>订单号</th>
+                <th>规格</th>
+                <th>日期</th>
+                <th>样品数</th>
+                <th>✅合格</th>
+                <th>❌不合格</th>
+                <th>合格率</th>
+                <th>状态</th>
+                <th style="width:55px;">操作</th>
+            </tr></thead><tbody>`;
+
+            filtered.forEach(o => {
+                const rate = o.samples.length > 0 ? (o.passCount / o.samples.length * 100).toFixed(1) : 0;
+                const rowId = `row_${o.orderId.replace(/[^a-zA-Z0-9]/g,'_')}`;
+                const isExpanded = expandedRows.has(rowId);
+
+                html += `<tr id="${rowId}">
+                    <td><strong>${o.orderId}</strong></td>
+                    <td>${o.spec}</td>
+                    <td>${o.date}</td>
+                    <td>${o.samples.length}</td>
+                    <td style="color:#22b573;font-weight:600;">${o.passCount}</td>
+                    <td style="color:${o.failCount > 0 ? '#f55753' : '#999'};font-weight:${o.failCount > 0 ? '700' : '400'}">${o.failCount}</td>
+                    <td style="font-weight:600;color:${parseFloat(rate) >= 100 ? '#22b573' : '#f55753'}">${rate}%</td>
+                    <td><span class="tag ${o.isPass ? 'pass' : 'fail'}">${o.isPass ? '✅ 合格' : '❌ 不合格'}</span></td>
+                    <td><button onclick="toggleDetail('${rowId}')" style="padding:1px 10px;border:1px solid #ddd;border-radius:4px;background:#f5f5f5;cursor:pointer;font-size:12px;">${isExpanded ? '收起' : '展开'}</button></td>
+                </tr>
+                <tr id="${rowId}_detail" style="display:${isExpanded ? 'table-row' : 'none'};background:#fafbff;">
+                    <td colspan="9" style="padding:8px 12px;">
+                        <div style="font-size:12px;color:#666;margin-bottom:4px;font-weight:600;">📋 样品明细（${o.samples.length} 个）</div>
+                        <table style="font-size:12px;border:1px solid #eee;border-radius:4px;overflow:hidden;width:100%;">
+                            <thead><tr style="background:#f0f2f5;">
+                                <th>#</th>
+                                <th>样品编号</th>
+                                <th>手感</th>
+                                <th>是否易撕破</th>
+                                <th>外观检测</th>
+                                <th>密封性</th>
+                                <th>剥离力结论</th>
+                            </tr></thead>
+                            <tbody>`;
+                o.samples.forEach((s, si) => {
+                    html += `<tr>
+                                <td>${si+1}</td>
+                                <td>${s.sampleId || '-'}</td>
+                                <td>${s.feel || '-'}</td>
+                                <td>${s.tear || '-'}</td>
+                                <td>${s.appearance || '-'}</td>
+                                <td>${s.sealLeak || '-'}</td>
+                                <td>${s.peelConclusion || '-'}</td>
+                            </tr>`;
+                });
+                html += `</tbody></table>
+                    </td>
+                </tr>`;
+            });
+
+            html += `</tbody></table>`;
+            el.detailTable.innerHTML = html;
+        }
+
+        // ================================================================
+        // 展开/收起
+        // ================================================================
+
+        window.toggleDetail = function(rowId) {
+            const detail = document.getElementById(rowId + '_detail');
+            if (detail) {
+                const isHidden = detail.style.display === 'none';
+                detail.style.display = isHidden ? 'table-row' : 'none';
+                if (isHidden) expandedRows.add(rowId);
+                else expandedRows.delete(rowId);
+                const btn = document.querySelector(`#${rowId} button`);
+                if (btn) btn.textContent = isHidden ? '收起' : '展开';
+            }
+        };
+
+        function expandAll() {
+            document.querySelectorAll('#detailTable tbody tr[id^="row_"]:not([id$="_detail"])').forEach(row => {
+                const id = row.id;
+                const detail = document.getElementById(id + '_detail');
+                if (detail && detail.style.display === 'none') {
+                    detail.style.display = 'table-row';
+                    expandedRows.add(id);
+                    const btn = document.querySelector(`#${id} button`);
+                    if (btn) btn.textContent = '收起';
+                }
+            });
+        }
+
+        function collapseAll() {
+            document.querySelectorAll('#detailTable tbody tr[id^="row_"]:not([id$="_detail"])').forEach(row => {
+                const id = row.id;
+                const detail = document.getElementById(id + '_detail');
+                if (detail && detail.style.display === 'table-row') {
+                    detail.style.display = 'none';
+                    expandedRows.delete(id);
+                    const btn = document.querySelector(`#${id} button`);
+                    if (btn) btn.textContent = '展开';
+                }
+            });
+        }
+
+        // ================================================================
+        // 事件
+        // ================================================================
+
+        el.searchInput.addEventListener('input', () => {
+            expandedRows = new Set();
+            renderTable(cachedData, el.searchInput.value);
+        });
+        el.clearBtn.addEventListener('click', () => {
+            el.searchInput.value = '';
+            expandedRows = new Set();
+            renderTable(cachedData, '');
+        });
+        el.expandAllBtn.addEventListener('click', expandAll);
+        el.collapseAllBtn.addEventListener('click', collapseAll);
+        el.refreshBtn.addEventListener('click', loadData);
+
+        // ================================================================
+        // 启动
+        // ================================================================
+
+        loadData();
+    </script>
+
+</body>
+</html>
