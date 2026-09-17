@@ -95,7 +95,7 @@
         <div class="card">
             <div class="card-title">❌ 返工明细 <span class="badge">共 <span id="failCountBadge">0</span> 条</span><span class="sort-hint">↓ 最新在前</span></div>
             <div class="search-box">
-                <input type="text" id="failSearchInput" placeholder="搜索订单号 / 工号 / 机台号..." />
+                <input type="text" id="failSearchInput" placeholder="搜索订单号 / 工号..." />
                 <button class="clear-btn" id="failClearBtn">清除</button>
                 <span class="search-hint" id="failResultHint">共 0 条</span>
             </div>
@@ -424,8 +424,7 @@
             if (kw) {
                 filtered = failList.filter(item =>
                     item.order.toLowerCase().includes(kw) ||
-                    item.worker.toLowerCase().includes(kw) ||
-                    item.machine.toLowerCase().includes(kw)
+                    item.worker.toLowerCase().includes(kw)
                 );
             }
             filtered.sort((a, b) => b.date.localeCompare(a.date));
@@ -436,7 +435,8 @@
                 return;
             }
 
-            let html = `<table><thead><tr><th>检验日期</th><th>订单号</th><th>工号</th><th>机台号</th><th>掉缝</th><th>外观疵点</th><th>处理结果</th></tr></thead><tbody>`;
+            // ⭐ 已去掉"机台号"列
+            let html = `<table><thead><tr><th>检验日期</th><th>订单号</th><th>工号</th><th>掉缝</th><th>外观疵点</th><th>处理结果</th></tr></thead><tbody>`;
             filtered.forEach(item => {
                 const seamDisplay = item.seam !== '无' && item.seam !== '' ? `<span class="tag defect">${item.seam}</span>` : '无';
                 const appDisplay = item.appearance !== '无' && item.appearance !== '' ? `<span class="tag defect">${item.appearance}</span>` : '无';
@@ -444,7 +444,6 @@
                     <td>${item.date || '-'}</td>
                     <td>${item.order || '-'}</td>
                     <td><strong>${item.worker || '-'}</strong></td>
-                    <td>${item.machine || '-'}</td>
                     <td>${seamDisplay}</td>
                     <td>${appDisplay}</td>
                     <td><span class="tag fail">返工</span></td>
