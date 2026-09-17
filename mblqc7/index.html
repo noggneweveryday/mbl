@@ -120,14 +120,9 @@
     </div>
 
     <script>
-        // ================================================================
-        // 配置区
-        // ================================================================
-
         const API_KEY = '37x5cCwMcDtqmnuuKQe2Xfakg7Ez5GcM';
         const API_URL = 'https://shurui.online-office.net/openapi/v1/app/564ba6f1503200052f825d8c/entry/54225d875ae1d7e649fbaae2/data';
 
-        // 字段映射（机折车间）
         const ORDER_FIELD = '_widget_1788053163476';
         const WORKER_FIELD = '_widget_1788053163493';
         const MACHINE_FIELD = '_widget_1788053163510';
@@ -136,10 +131,6 @@
         const SEAM_FIELD = '_widget_1788053164511';
         const APPEARANCE_FIELD = '_widget_1788053163622';
         const RESULT_FIELD = '_widget_1788057631693';
-
-        // ================================================================
-        // DOM 引用
-        // ================================================================
 
         const el = {
             total: document.getElementById('totalCount'),
@@ -165,22 +156,14 @@
         let cachedOrderList = [];
         let isLoading = false;
 
-        // ================================================================
-        // 工具：延时
-        // ================================================================
-
         function sleep(ms) {
             return new Promise(resolve => setTimeout(resolve, ms));
         }
 
-        // ================================================================
-        // API 请求（分页拉取全部数据）
-        // ================================================================
-
         async function fetchAllRecords() {
             let allData = [];
             let skip = 0;
-            const PAGE_SIZE = 300;   // ⭐ 服务器上限是 300
+            const PAGE_SIZE = 300;
 
             while (true) {
                 const body = {
@@ -221,34 +204,22 @@
                     }
                 }
 
-                if (!success) {
-                    throw new Error('请求失败，请查看控制台日志');
-                }
-
-                // ⭐ 返回 0 条 → 没有更多数据 → 停
+                if (!success) throw new Error('请求失败，请查看控制台日志');
                 if (list.length === 0) break;
 
                 allData = allData.concat(list);
-                skip += list.length;   // ⭐ 用实际返回条数递增
+                skip += list.length;
 
                 console.log(`已拉取 ${allData.length} 条，本次返回 ${list.length} 条`);
 
-                // ⭐ 本次返回少于 300 → 最后一页 → 停
                 if (list.length < PAGE_SIZE) break;
-
-                // 安全阀
                 if (allData.length > 10000) break;
 
-                // ⭐ 每次请求之间隔 500ms，避免限流
                 await sleep(500);
             }
 
             return allData;
         }
-
-        // ================================================================
-        // 解析数据
-        // ================================================================
 
         function parseRecords(records) {
             const results = [];
@@ -264,15 +235,9 @@
                 const subRows = order[DETAIL_SUBFORM] || [];
                 if (!Array.isArray(subRows) || subRows.length === 0) {
                     results.push({
-                        order: orderId,
-                        date: orderDate,
-                        worker: worker,
-                        machine: machine,
-                        seam: '无',
-                        appearance: '无',
-                        result: '合格',
-                        isFail: false,
-                        defects: []
+                        order: orderId, date: orderDate, worker, machine,
+                        seam: '无', appearance: '无', result: '合格',
+                        isFail: false, defects: []
                     });
                     return;
                 }
@@ -281,37 +246,18 @@
                     const seam = String(row[SEAM_FIELD] || '').trim();
                     const appearance = String(row[APPEARANCE_FIELD] || '').trim();
                     const result = String(row[RESULT_FIELD] || '').trim();
-
                     const isFail = result === '返工';
 
                     const defects = [];
-                    if (seam && seam !== '无' && seam !== '' && seam !== '0') {
-                        defects.push({ name: '掉缝', detail: seam });
-                    }
-                    if (appearance && appearance !== '无' && appearance !== '') {
-                        defects.push({ name: '外观疵点', detail: appearance });
-                    }
+                    if (seam && seam !== '无' && seam !== '' && seam !== '0') defects.push({ name: '掉缝', detail: seam });
+                    if (appearance && appearance !== '无' && appearance !== '') defects.push({ name: '外观疵点', detail: appearance });
 
-                    results.push({
-                        order: orderId,
-                        date: orderDate,
-                        worker: worker,
-                        machine: machine,
-                        seam: seam,
-                        appearance: appearance,
-                        result: result,
-                        isFail: isFail,
-                        defects: defects
-                    });
+                    results.push({ order: orderId, date: orderDate, worker, machine, seam, appearance, result, isFail, defects });
                 });
             });
 
             return results;
         }
-
-        // ================================================================
-        // 加载数据
-        // ================================================================
 
         async function loadData() {
             if (isLoading) return;
@@ -332,7 +278,6 @@
                 }
 
                 const parsed = parseRecords(records);
-
                 if (parsed.length === 0) {
                     el.statusText.textContent = '● 解析后无有效数据';
                     el.statusText.className = 'status offline';
@@ -347,9 +292,7 @@
                 const orderMap = {};
                 valid.forEach(item => {
                     const key = item.order || '未知';
-                    if (!orderMap[key]) {
-                        orderMap[key] = { order: key, date: item.date, total: 0, fail: 0 };
-                    }
+                    if (!orderMap[key]) orderMap[key] = { order: key, date: item.date, total: 0, fail: 0 };
                     orderMap[key].total++;
                     if (item.isFail) orderMap[key].fail++;
                 });
@@ -359,21 +302,17 @@
                 cachedFailList = failList;
                 cachedOrderList = orderList;
 
-                const total = valid.length;
-                const passCount = passList.length;
-                const failCount = failList.length;
-
-                el.total.textContent = total;
+                el.total.textContent = valid.length;
                 el.orderCount.textContent = orderList.length;
-                el.pass.textContent = passCount;
-                el.fail.textContent = failCount;
-                el.failBadge.textContent = failCount;
+                el.pass.textContent = passList.length;
+                el.fail.textContent = failList.length;
+                el.failBadge.textContent = failList.length;
 
                 renderCharts(failList);
                 renderFailTable(failList, '');
                 renderOrderTable(orderList, '');
 
-                el.statusText.textContent = `● 已加载 ${total} 条记录`;
+                el.statusText.textContent = `● 已加载 ${valid.length} 条记录`;
                 el.statusText.className = 'status online';
 
             } catch (error) {
@@ -388,10 +327,6 @@
                 el.refreshBtn.textContent = '🔄 刷新数据';
             }
         }
-
-        // ================================================================
-        // 渲染函数
-        // ================================================================
 
         function renderCharts(failList) {
             const defectMap = {};
@@ -408,9 +343,7 @@
             if (names1.length === 0) {
                 chart1.setOption({
                     title: { text: '✅ 全部合格，无缺陷', left: 'center', top: 'center', textStyle: { color: '#999', fontSize: 16, fontWeight: 400 } },
-                    xAxis: { show: false },
-                    yAxis: { show: false },
-                    series: [{ type: 'bar', data: [] }]
+                    xAxis: { show: false }, yAxis: { show: false }, series: [{ type: 'bar', data: [] }]
                 });
             } else {
                 chart1.setOption({
@@ -419,9 +352,7 @@
                     xAxis: { type: 'category', data: names1, axisLabel: { fontSize: 13, fontWeight: 600 } },
                     yAxis: { type: 'value', minInterval: 1, name: '出现次数', splitLine: { lineStyle: { color: '#f0f0f0', type: 'dashed' } } },
                     series: [{
-                        type: 'bar',
-                        data: values1,
-                        barWidth: '50%',
+                        type: 'bar', data: values1, barWidth: '50%',
                         itemStyle: {
                             color: function(params) {
                                 const colors = ['#f55753', '#f5a623', '#4f6ef7', '#22b573', '#8b5cf6'];
@@ -450,9 +381,7 @@
             if (names2.length === 0) {
                 chart2.setOption({
                     title: { text: '✅ 无外观疵点', left: 'center', top: 'center', textStyle: { color: '#999', fontSize: 16, fontWeight: 400 } },
-                    xAxis: { show: false },
-                    yAxis: { show: false },
-                    series: [{ type: 'bar', data: [] }]
+                    xAxis: { show: false }, yAxis: { show: false }, series: [{ type: 'bar', data: [] }]
                 });
             } else {
                 const needRotate = names2.length > 5;
@@ -460,23 +389,15 @@
                     tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
                     grid: { left: '8%', right: '8%', top: '10%', bottom: needRotate ? '30%' : '18%' },
                     xAxis: {
-                        type: 'category',
-                        data: names2,
+                        type: 'category', data: names2,
                         axisLabel: {
-                            fontSize: 11,
-                            interval: 0,
-                            rotate: needRotate ? 30 : 0,
-                            formatter: function(val) {
-                                if (val.length > 12) return val.substring(0, 10) + '…';
-                                return val;
-                            }
+                            fontSize: 11, interval: 0, rotate: needRotate ? 30 : 0,
+                            formatter: function(val) { return val.length > 12 ? val.substring(0, 10) + '…' : val; }
                         }
                     },
                     yAxis: { type: 'value', minInterval: 1, name: '出现次数', splitLine: { lineStyle: { color: '#f0f0f0', type: 'dashed' } } },
                     series: [{
-                        type: 'bar',
-                        data: values2,
-                        barWidth: '40%',
+                        type: 'bar', data: values2, barWidth: '40%',
                         itemStyle: {
                             color: function(params) {
                                 const colors = ['#8b5cf6', '#4f6ef7', '#f5a623', '#22b573', '#f55753', '#e67e22', '#1abc9c', '#3498db'];
@@ -542,9 +463,7 @@
 
             const kw = keyword.trim().toLowerCase();
             let filtered = orderList;
-            if (kw) {
-                filtered = orderList.filter(item => item.order.toLowerCase().includes(kw));
-            }
+            if (kw) filtered = orderList.filter(item => item.order.toLowerCase().includes(kw));
             el.orderHint.textContent = `共 ${filtered.length} 个订单`;
 
             if (filtered.length === 0) {
@@ -567,19 +486,11 @@
             el.orderTable.innerHTML = html;
         }
 
-        // ================================================================
-        // 搜索事件
-        // ================================================================
-
         el.failSearch.addEventListener('input', () => renderFailTable(cachedFailList, el.failSearch.value));
         el.failClear.addEventListener('click', () => { el.failSearch.value = ''; renderFailTable(cachedFailList, ''); });
         el.orderSearch.addEventListener('input', () => renderOrderTable(cachedOrderList, el.orderSearch.value));
         el.orderClear.addEventListener('click', () => { el.orderSearch.value = ''; renderOrderTable(cachedOrderList, ''); });
         el.refreshBtn.addEventListener('click', loadData);
-
-        // ================================================================
-        // 启动
-        // ================================================================
 
         loadData();
     </script>
