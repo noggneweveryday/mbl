@@ -9,7 +9,7 @@
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; background: #f0f2f5; padding: 20px; min-height: 100vh; }
         .screen { max-width: 1500px; margin: 0 auto; }
-        .topbar { background: #fff; border-radius: 16px; padding: 20px 28px; margin-bottom: 20px; box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+        .topbar { background: #fff; border-radius: 16px; padding: 20px 28px; margin-bottom: 20px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
         .topbar h1 { font-size: 24px; color: #1a1a2e; }
         .topbar .sub { color: #999; font-size: 14px; }
         .topbar .right { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
@@ -21,7 +21,7 @@
         .topbar .refresh-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
         .stats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; margin-bottom: 20px; }
-        .stat-card { background: #fff; border-radius: 12px; padding: 16px 20px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06); border: 1px solid #eef0f5; }
+        .stat-card { background: #fff; border-radius: 12px; padding: 16px 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); border: 1px solid #eef0f5; }
         .stat-card .label { font-size: 13px; color: #999; }
         .stat-card .value { font-size: 28px; font-weight: 700; color: #1a1a2e; margin-top: 2px; }
         .stat-card .value.green { color: #22b573; }
@@ -30,7 +30,7 @@
         .stat-card .value.blue { color: #4f6ef7; }
 
         .row-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
-        .card { background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06); border: 1px solid #eef0f5; }
+        .card { background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); border: 1px solid #eef0f5; }
         .card .card-title { font-size: 15px; font-weight: 600; color: #1a1a2e; margin-bottom: 12px; display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
         .card .card-title .badge { background: #4f6ef7; color: #fff; font-size: 12px; border-radius: 20px; padding: 0 12px; font-weight: 400; }
         .card .card-title .sort-hint { color: #999; font-size: 12px; font-weight: 400; }
@@ -125,16 +125,8 @@
     </div>
 
     <script>
-        // ================================================================
-        // 配置区
-        // ================================================================
-
         const API_KEY = '37x5cCwMcDtqmnuuKQe2Xfakg7Ez5GcM';
         const API_URL = 'https://shurui.online-office.net/openapi/v1/app/564ba6f1503200052f825d8c/entry/570061c77aaea00d85b0b5af/data';
-
-        // ================================================================
-        // 字段映射（纱布片）
-        // ================================================================
 
         const ORDER_FIELD = '_widget_1788053569370';
         const QTY_FIELD = '_widget_1788077601947';
@@ -160,10 +152,6 @@
         const DENSITY_FIELD = '_widget_1788053570020';
         const HEIGHT_FIELD = '_widget_1788053570027';
 
-        // ================================================================
-        // 通用工具函数
-        // ================================================================
-
         function getStringValue(val) {
             if (val === undefined || val === null) return '';
             if (typeof val === 'object') {
@@ -182,10 +170,6 @@
         function sleep(ms) {
             return new Promise(resolve => setTimeout(resolve, ms));
         }
-
-        // ================================================================
-        // DOM 引用
-        // ================================================================
 
         const $ = id => document.getElementById(id);
 
@@ -214,20 +198,18 @@
         let orderDefectChart = null;
         let isLoading = false;
 
-        // ================================================================
-        // API 请求（分页拉取全部数据）
-        // ================================================================
-
         async function fetchAllRecords() {
             let allData = [];
             let skip = 0;
-            const limit = 200;   // 每次拉 200 条，避免请求次数过多触发限流
+            const PAGE_SIZE = 300;
 
             while (true) {
-                // ⭐ 不带 sort，只用最简参数，避免 400
                 const body = {
-                    limit: limit,
-                    skip: skip
+                    limit: PAGE_SIZE,
+                    skip: skip,
+                    sort: {
+                        [DATE_FIELD]: 'desc'
+                    }
                 };
 
                 let success = false;
@@ -248,10 +230,10 @@
                         });
 
                         const text = await response.text();
-                        console.log(`【尝试 ${attempt.name}】HTTP ${response.status}`, text.slice(0, 200));
+                        console.log(`【尝试 ${attempt.name}】HTTP ${response.status}`, text.slice(0, 150));
 
                         if (!response.ok) {
-                            throw new Error(`HTTP ${response.status}: ${text.slice(0, 200)}`);
+                            throw new Error(`HTTP ${response.status}: ${text.slice(0, 150)}`);
                         }
 
                         const result = JSON.parse(text);
@@ -263,34 +245,26 @@
                     }
                 }
 
-                if (!success) {
-                    throw new Error('请求失败，请查看控制台日志');
-                }
-
+                if (!success) throw new Error('请求失败，请查看控制台日志');
                 if (list.length === 0) break;
 
                 allData = allData.concat(list);
-                skip += limit;
+                skip += list.length;
 
-                if (list.length < limit) break;
+                console.log(`已拉取 ${allData.length} 条，本次返回 ${list.length} 条`);
+
+                if (list.length < PAGE_SIZE) break;
                 if (allData.length > 10000) break;
 
-                // ⭐ 每次请求之间隔 300ms，避免触发限流
-                await sleep(300);
+                await sleep(500);
             }
 
             return allData;
         }
 
-        // ================================================================
-        // 解析数据
-        // ================================================================
-
         function parseRecords(records) {
             const orders = {};
-            let totalRows = 0;
-            let passRows = 0;
-            let failRows = 0;
+            let totalRows = 0, passRows = 0, failRows = 0;
             const allDefectTypes = {};
 
             records.forEach(order => {
@@ -342,11 +316,8 @@
                             const count = parseInt(match[2]) || 0;
                             if (name && count > 0) {
                                 const existing = orders[orderId].defects.find(x => x.name === name);
-                                if (existing) {
-                                    existing.count += count;
-                                } else {
-                                    orders[orderId].defects.push({ name, count });
-                                }
+                                if (existing) existing.count += count;
+                                else orders[orderId].defects.push({ name, count });
                                 orders[orderId].defectCount += count;
                                 allDefectTypes[name] = (allDefectTypes[name] || 0) + count;
                             }
@@ -365,10 +336,6 @@
             const orderList = Object.values(orders);
             return { orderList, totalRows, passRows, failRows, allDefectTypes };
         }
-
-        // ================================================================
-        // 加载数据
-        // ================================================================
 
         async function loadData() {
             if (isLoading) return;
@@ -427,10 +394,6 @@
             }
         }
 
-        // ================================================================
-        // 渲染函数
-        // ================================================================
-
         function renderDefectChart(defectMap) {
             const chart = echarts.init(el.chartDefect);
             const sorted = Object.entries(defectMap).sort((a, b) => b[1] - a[1]);
@@ -440,9 +403,7 @@
             if (names.length === 0) {
                 chart.setOption({
                     title: { text: '✅ 无缺陷记录', left: 'center', top: 'center', textStyle: { color: '#999', fontSize: 16, fontWeight: 400 } },
-                    xAxis: { show: false },
-                    yAxis: { show: false },
-                    series: [{ type: 'bar', data: [] }]
+                    xAxis: { show: false }, yAxis: { show: false }, series: [{ type: 'bar', data: [] }]
                 });
                 return;
             }
@@ -454,9 +415,7 @@
                 xAxis: { type: 'category', data: names, axisLabel: { fontSize: 12, interval: 0, rotate: needRotate ? 25 : 0 } },
                 yAxis: { type: 'value', name: '出现次数', minInterval: 1, splitLine: { lineStyle: { color: '#f0f0f0', type: 'dashed' } } },
                 series: [{
-                    type: 'bar',
-                    data: values,
-                    barWidth: '45%',
+                    type: 'bar', data: values, barWidth: '45%',
                     itemStyle: {
                         color: function(params) {
                             const colors = ['#f55753', '#f5a623', '#4f6ef7', '#22b573', '#8b5cf6', '#e67e22', '#1abc9c', '#3498db'];
@@ -473,9 +432,7 @@
         function renderOrderDefectChart(orderList, keyword) {
             const kw = keyword.trim().toLowerCase();
             let filtered = orderList;
-            if (kw) {
-                filtered = orderList.filter(item => item.orderId.toLowerCase().includes(kw));
-            }
+            if (kw) filtered = orderList.filter(item => item.orderId.toLowerCase().includes(kw));
 
             el.orderDefectHint.textContent = `共 ${filtered.length} 个订单`;
 
@@ -484,16 +441,12 @@
             const names = top10.map(d => d.orderId);
             const values = top10.map(d => d.defectCount);
 
-            if (orderDefectChart === null) {
-                orderDefectChart = echarts.init(el.chartOrderDefect);
-            }
+            if (orderDefectChart === null) orderDefectChart = echarts.init(el.chartOrderDefect);
 
             if (values.every(v => v === 0)) {
                 orderDefectChart.setOption({
                     title: { text: '✅ 全部无缺陷', left: 'center', top: 'center', textStyle: { color: '#999', fontSize: 16, fontWeight: 400 } },
-                    xAxis: { show: false },
-                    yAxis: { show: false },
-                    series: [{ type: 'bar', data: [] }]
+                    xAxis: { show: false }, yAxis: { show: false }, series: [{ type: 'bar', data: [] }]
                 });
                 return;
             }
@@ -505,9 +458,7 @@
                 xAxis: { type: 'category', data: names, axisLabel: { fontSize: 11, interval: 0, rotate: needRotate ? 30 : 0 } },
                 yAxis: { type: 'value', name: '缺陷数', minInterval: 1, splitLine: { lineStyle: { color: '#f0f0f0', type: 'dashed' } } },
                 series: [{
-                    type: 'bar',
-                    data: values,
-                    barWidth: '40%',
+                    type: 'bar', data: values, barWidth: '40%',
                     itemStyle: {
                         color: function(params) {
                             const colors = ['#4f6ef7', '#8b5cf6', '#f55753', '#f5a623', '#22b573'];
@@ -579,10 +530,6 @@
             el.detailTable.innerHTML = html;
         }
 
-        // ================================================================
-        // 搜索事件
-        // ================================================================
-
         el.searchInput.addEventListener('input', () => renderTable(cachedData, el.searchInput.value));
         el.clearBtn.addEventListener('click', () => {
             el.searchInput.value = '';
@@ -598,10 +545,6 @@
         });
 
         el.refreshBtn.addEventListener('click', loadData);
-
-        // ================================================================
-        // 启动
-        // ================================================================
 
         loadData();
     </script>
