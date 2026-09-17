@@ -180,11 +180,11 @@
         async function fetchAllRecords() {
             let allData = [];
             let skip = 0;
-            const limit = 200;   // 每次拉 200 条，避免请求次数过多触发限流
+            const PAGE_SIZE = 300;   // ⭐ 服务器上限是 300
 
             while (true) {
                 const body = {
-                    limit: limit,
+                    limit: PAGE_SIZE,
                     skip: skip
                 };
 
@@ -206,10 +206,10 @@
                         });
 
                         const text = await response.text();
-                        console.log(`【尝试 ${attempt.name}】HTTP ${response.status}`, text.slice(0, 200));
+                        console.log(`【尝试 ${attempt.name}】HTTP ${response.status}`, text.slice(0, 150));
 
                         if (!response.ok) {
-                            throw new Error(`HTTP ${response.status}: ${text.slice(0, 200)}`);
+                            throw new Error(`HTTP ${response.status}: ${text.slice(0, 150)}`);
                         }
 
                         const result = JSON.parse(text);
@@ -225,23 +225,22 @@
                     throw new Error('请求失败，请查看控制台日志');
                 }
 
-                if (list.length === 0) {
-                    break;
-                }
+                // ⭐ 返回 0 条 → 没有更多数据 → 停
+                if (list.length === 0) break;
 
                 allData = allData.concat(list);
-                skip += limit;
+                skip += list.length;   // ⭐ 用实际返回条数递增
 
-                if (list.length < limit) {
-                    break;
-                }
+                console.log(`已拉取 ${allData.length} 条，本次返回 ${list.length} 条`);
 
-                if (allData.length > 10000) {
-                    break;
-                }
+                // ⭐ 本次返回少于 300 → 最后一页 → 停
+                if (list.length < PAGE_SIZE) break;
 
-                // 每次请求之间隔 300ms，避免触发限流
-                await sleep(300);
+                // 安全阀
+                if (allData.length > 10000) break;
+
+                // ⭐ 每次请求之间隔 500ms，避免限流
+                await sleep(500);
             }
 
             return allData;
